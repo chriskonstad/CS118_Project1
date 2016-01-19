@@ -15,7 +15,27 @@
 using std::runtime_error;
 using std::string;
 
-Server::Server(int port) : mPort(port){
+Server::Buffer::Buffer(int size) : mSize(size) {
+  mLocation = new char[size];
+}
+
+Server::Buffer::~Buffer() {
+  delete[] mLocation;
+}
+
+char * Server::Buffer::data() {
+  return mLocation;
+}
+
+int Server::Buffer::size() const {
+  return mSize;
+}
+
+void Server::Buffer::zero() {
+  memset(mLocation, 0, mSize);
+}
+
+Server::Server(int port) : mPort(port), mBuffer(mMaxBufferSize) {
   mSockfd = socket(AF_INET, SOCK_STREAM, 0); //create socket
   if (mSockfd < 0) {
     error("ERROR opening socket");
@@ -35,9 +55,7 @@ Server::Server(int port) : mPort(port){
 
 Server::~Server() {
   // Close the opened socket
-  if(mSockfd >= 0) {
-    close(mSockfd);
-  }
+  close(mSockfd);
 }
 
 void Server::run() {
@@ -59,19 +77,21 @@ void Server::handleRequest(int socketfd, const sockaddr_in &cli_addr,
     error("ERROR on accept");
   }
 
-  int n;
-  char buffer[256];
+  int nBytesRead;
+  int nBytesWritten;
 
-  memset(buffer, 0, 256); //reset memory
+  mBuffer.zero(); // reset memory
 
   //read client's message
-  n = read(socketfd,buffer,255);
-  if (n < 0) error("ERROR reading from socket");
-  printf("Here is the message: %s\n",buffer);
+  nBytesRead = read(socketfd, mBuffer.data() , mBuffer.size() - 1);
+  if (nBytesRead < 0) {
+    error("ERROR reading from socket");
+  }
+  printf("Here is the message: %s\n", mBuffer.data());
 
   //reply to client
-  n = write(socketfd,"I got your message",18);
-  if (n < 0) {
+  nBytesWritten = write(socketfd,"I got your message",18);
+  if (nBytesWritten < 0) {
     error("ERROR writing to socket");
   }
 

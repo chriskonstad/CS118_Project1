@@ -12,10 +12,23 @@ class Server {
   void run();
 
  private:
+  class Buffer {
+    public:
+      Buffer(int size);
+      ~Buffer();
+      char* data();
+      int size() const;
+      void zero();
+    private:
+      char *mLocation;
+      int mSize;
+  };
   int mPort;
   int mSockfd;
   sockaddr_in mAddress;
   void error(const std::string& msg);
   void handleRequest(int socketfd, const sockaddr_in& cli_addr,
                      const socklen_t& cli_len);
+  static constexpr int mMaxBufferSize = 1024;
+  Buffer mBuffer;
 };
