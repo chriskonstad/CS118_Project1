@@ -171,16 +171,6 @@ string Response::createHeader() const {
   return ss.str();
 }
 
-vector<char> createPacket(const Response& response) {
-  string header = response.createHeader();
-  vector<char> ret;
-  ret.resize(header.length() + 1 /* newline */ + response.data().size());
-  memcpy(ret.data(), header.data(), header.length());
-  ret[header.length()] = '\n';
-  memcpy(&ret.data()[header.length()+1], response.data().data(), response.data().size());
-  return ret;
-}
-
 string parseUri(Server::Buffer& buffer) {
   int start = 0;
   int end = 0;
@@ -240,8 +230,8 @@ Server::Server(int port) : mLog(cout), mPort(port), mBuffer(mMaxBufferSize) {
   if (mSockfd < 0) {
     error("ERROR opening socket");
   }
-  memset((char *) &mAddress, 0, sizeof(mAddress));  //reset memory
-  //fill in address info
+  memset((char *) &mAddress, 0, sizeof(mAddress));  // reset memory
+  // fill in address info
   mAddress.sin_family = AF_INET;
   mAddress.sin_addr.s_addr = INADDR_ANY;
   mAddress.sin_port = htons(mPort);
@@ -250,7 +240,7 @@ Server::Server(int port) : mLog(cout), mPort(port), mBuffer(mMaxBufferSize) {
     error("ERROR on binding");
   }
 
-  listen(mSockfd,5); //5 simultaneous connection at most
+  listen(mSockfd,5); // 5 simultaneous connection at most
   mLog << "Initializing server on port " << mPort << endl;
 }
 
@@ -265,7 +255,7 @@ void Server::run() {
   socklen_t clilen;
   sockaddr_in cli_addr;
 
-  //accept connections
+  // accept connections
   while(true) {
     newsockfd = accept(mSockfd, (struct sockaddr *) &cli_addr, &clilen);
     handleRequest(newsockfd, cli_addr, clilen);
@@ -288,11 +278,13 @@ void Server::handleRequest(int socketfd, const sockaddr_in &cli_addr,
   SocketGuard socketGuard(socketfd);
 
   int nBytesRead;
-  int nBytesWritten;
+  int totalBytesWritten = 0;
+  vector<int> nBytesWritten;
+  nBytesWritten.reserve(3);
 
   mBuffer.zero(); // reset memory
 
-  //read client's message
+  // read client's message
   startRead = system_clock::now();
   nBytesRead = read(socketGuard.socket(), mBuffer.data() , mBuffer.size() - 1);
   if (nBytesRead < 0) {
@@ -303,21 +295,24 @@ void Server::handleRequest(int socketfd, const sockaddr_in &cli_addr,
        << mMaxBufferSize << " bytes]:" << endl
        << mBuffer.data() << endl;
 
-  // File to grab is between slash and a space
-  //reply to client
+  // reply to client
   startFile = system_clock::now();
   Response response(parseUri(mBuffer));
-  vector<char> packet = createPacket(response);
   endFile = system_clock::now();
 
+  string header = response.createHeader();
   startWrite = system_clock::now();
-  nBytesWritten = write(socketGuard.socket(), packet.data(), packet.size());
-  if (nBytesWritten < 0) {
-    error("ERROR writing to socket");
+  nBytesWritten.push_back(write(socketGuard.socket(), header.data(), header.size()));
+  nBytesWritten.push_back(write(socketGuard.socket(), "\n", 1));
+  nBytesWritten.push_back(write(socketGuard.socket(), response.data().data(), response.data().size()));
+  for(auto& i : nBytesWritten) {
+    if(i < 0) {
+      error("ERROR writing to socket");
+    }
+    totalBytesWritten += i;
   }
   endWrite = system_clock::now();
-  mLog << "Replied [" << nBytesWritten << " bytes]:" << endl;
-  string header = response.createHeader();
+  mLog << "Replied [" << totalBytesWritten << " bytes]:" << endl;
   mLog << header << endl;
 
   end = system_clock::now();
