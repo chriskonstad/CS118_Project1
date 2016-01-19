@@ -8,6 +8,7 @@
 #include <strings.h>
 
 #include <ctime>
+#include <fstream>
 #include <iostream>
 #include <locale>
 #include <sstream>
@@ -19,6 +20,7 @@
 
 using std::cout;
 using std::endl;
+using std::ifstream;
 using std::localtime;
 using std::runtime_error;
 using std::string;
@@ -37,8 +39,6 @@ class Response {
   private:
     enum class Status {
       OK = 200,
-      NOT_MODIFIED = 304,
-      BAD_REQUEST = 400,
       FORBIDDEN = 403,
       NOT_FOUND = 404,
       INT_SERV_ERR = 500,
@@ -61,6 +61,37 @@ Response::Response(string filepath) {
   time(&mModified); // default value
   mStatus = Status::INT_SERV_ERR; // default
   mType = ContentType::HTML;  // default
+
+  // TODO ensure file is in server's tree
+  ifstream file("." + filepath, std::ios::binary | std::ios::ate );
+  if(!file) {
+    mStatus = Status::NOT_FOUND;
+  } else {
+    mStatus = Status::OK;
+    // Get the length of the file
+    file.seekg(0, file.end);
+    int filesize = file.tellg();
+    file.seekg(0, file.beg);
+
+    // Read the file into the data vector
+    mData.resize(filesize);
+    file.read(mData.data(), mData.size());
+
+    // Get the file extension
+    int pos = filepath.rfind(".");
+    string ext = filepath.substr(pos+1);
+    if("html" == ext) {
+      mType = ContentType::HTML;
+    } else if("jpeg" == ext) {
+      mType = ContentType::JPEG;
+    } else if("gif" == ext) {
+      mType = ContentType::GIF;
+    } else {
+      mType = ContentType::HTML;
+      mStatus = Status::FORBIDDEN;
+      mData.clear();
+    }
+  }
 }
 
 vector<char> Response::data() const {
@@ -82,12 +113,6 @@ string Response::createHeader() const {
   switch(mStatus) {
     case Status::OK:
       ss << "200 OK" << endl;
-      break;
-    case Status::NOT_MODIFIED:
-      ss << "304 Not Modified" << endl;
-      break;
-    case Status::BAD_REQUEST:
-      ss << "400 Bad Request" << endl;
       break;
     case Status::FORBIDDEN:
       ss << "403 Forbidden" << endl;
@@ -119,6 +144,16 @@ string Response::createHeader() const {
       break;
   }
   return ss.str();
+}
+
+vector<char> createPacket(const Response& response) {
+  string header = response.createHeader();
+  vector<char> ret;
+  ret.resize(header.length() + 1 /* newline */ + response.data().size());
+  memcpy(ret.data(), header.data(), header.length());
+  ret[header.length()] = '\n';
+  memcpy(&ret.data()[header.length()+1], response.data().data(), response.data().size());
+  return ret;
 }
 
 string parseUri(Server::Buffer& buffer) {
@@ -221,12 +256,12 @@ void Server::handleRequest(int socketfd, const sockaddr_in &cli_addr,
        << mBuffer.data() << endl;
 
   // File to grab is between slash and a space
-  mLog << "Parsed URI: " << parseUri(mBuffer) << endl;
-
   //reply to client
-  Response response("foo.html");
+  Response response(parseUri(mBuffer));
+  vector<char> packet = createPacket(response);
+
   string header = response.createHeader();
-  nBytesWritten = write(socketfd, header.c_str(), header.length());
+  nBytesWritten = write(socketfd, packet.data(), packet.size());
   if (nBytesWritten < 0) {
     error("ERROR writing to socket");
   }
