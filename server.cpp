@@ -101,6 +101,7 @@ void Server::handleRequest(int socketfd, const sockaddr_in &cli_addr,
   if (nBytesWritten < 0) {
     error("ERROR writing to socket");
   }
+  mLog << "[Replied with " << nBytesWritten << " bytes]" << endl << endl;
 
   // TODO Not called if exception occurs above, FIX
   close(socketfd);  // close connection
