@@ -1,13 +1,17 @@
 CC=g++
 CFLAGS=-Wall -Wpedantic
+LDFLAGS=
+SOURCES=main.cpp
+OBJECTS=$(SOURCES:.cpp=.o)
+EXECUTABLE=server
 
-all: server
+all: $(SOURCES) $(EXECUTABLE)
 
-server: build/main.o
-	$(CC) build/main.o -o server
+$(EXECUTABLE): $(OBJECTS)
+	$(CC) $(LDFLAGS) $(OBJECTS) -o $@
 
-build/main.o: src/main.cpp
-	$(CC) $(CFLAGS) src/main.cpp
+.cpp.o:
+	$(CC) $(CFLAGS) $< -o $@
 
 clean:
-	rm build/*.o server
+	rm $(OBJECTS) $(EXECUTABLE)
