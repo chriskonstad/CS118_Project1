@@ -75,11 +75,10 @@ void Server::handleRequest(int socketfd, const sockaddr_in &cli_addr,
     error("ERROR writing to socket");
   }
 
-  close(socketfd);//close connection 
+  close(socketfd);  // close connection
 }
 
 void Server::error(const string& msg)
 {
-  //perror(msg);
   throw runtime_error(msg);
 }
