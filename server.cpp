@@ -32,6 +32,8 @@ using std::time_t;
 using std::vector;
 
 const string SERVER_NAME = "CS118 Project 1";
+const string FILE_403 = "./static/403.html";
+const string FILE_404 = "./static/404.html";
 
 class Response {
   public:
@@ -74,14 +76,18 @@ void Response::loadFile(const string& filepath) {
     mType = ContentType::HTML;
     mStatus = Status::FORBIDDEN;
     mData.clear();
-    loadFile("./static/403.html");
+    loadFile(FILE_403);
     return;
   }
 
   ifstream file(filepath, std::ios::binary | std::ios::ate );
-  if(!file) {
+  if(!file && FILE_404 != filepath) {
     mStatus = Status::NOT_FOUND;
-    loadFile("./static/404.html");
+    loadFile(FILE_404);
+    return;
+  } else if (!file && FILE_404 == filepath) {
+    // There was an error loading the 404 file, so show an internal server error
+    mStatus = Status::INT_SERV_ERR;
     return;
   } else {
     // mstatus defaults to 200 OK
