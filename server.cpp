@@ -7,8 +7,10 @@
 #include <stdlib.h>
 #include <strings.h>
 
-#include <ctime>
+#include <cerrno>
 #include <chrono>
+#include <ctime>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <locale>
@@ -196,6 +198,22 @@ string parseUri(Server::Buffer& buffer) {
   return string(&buffer.data()[start], end - start);
 }
 
+// Wraps the socketfd up in a RAII object so that sockets are always closed,
+// even if exceptions are called
+class SocketGuard {
+  public:
+    SocketGuard(int socketfd) : mSocketFd(socketfd) {}
+    ~SocketGuard() {
+      close(mSocketFd);
+    }
+
+    int socket() const {
+      return mSocketFd;
+    }
+  private:
+    int mSocketFd;
+};
+
 Server::Buffer::Buffer(int size) : mSize(size) {
   mLocation = new char[size];
 }
@@ -270,6 +288,7 @@ void Server::handleRequest(int socketfd, const sockaddr_in &cli_addr,
   if (socketfd < 0) {
     error("ERROR on accept");
   }
+  SocketGuard socketGuard(socketfd);
 
   int nBytesRead;
   int nBytesWritten;
@@ -278,7 +297,7 @@ void Server::handleRequest(int socketfd, const sockaddr_in &cli_addr,
 
   //read client's message
   startRead = system_clock::now();
-  nBytesRead = read(socketfd, mBuffer.data() , mBuffer.size() - 1);
+  nBytesRead = read(socketGuard.socket(), mBuffer.data() , mBuffer.size() - 1);
   if (nBytesRead < 0) {
     error("ERROR reading from socket");
   }
@@ -295,7 +314,7 @@ void Server::handleRequest(int socketfd, const sockaddr_in &cli_addr,
   endFile = system_clock::now();
 
   startWrite = system_clock::now();
-  nBytesWritten = write(socketfd, packet.data(), packet.size());
+  nBytesWritten = write(socketGuard.socket(), packet.data(), packet.size());
   if (nBytesWritten < 0) {
     error("ERROR writing to socket");
   }
@@ -304,8 +323,6 @@ void Server::handleRequest(int socketfd, const sockaddr_in &cli_addr,
   string header = response.createHeader();
   mLog << header << endl;
 
-  // TODO Not called if exception occurs above, FIX
-  close(socketfd);  // close connection
   end = system_clock::now();
   auto elapsed = duration_cast<microseconds>(end-start).count();
   auto elapsedRead = duration_cast<microseconds>(endRead-startRead).count();
@@ -319,6 +336,9 @@ void Server::handleRequest(int socketfd, const sockaddr_in &cli_addr,
 
 void Server::error(const string& msg)
 {
-  throw runtime_error(msg);
+  string message = msg;
+  if(errno) {
+    message += " (errno: " + string(strerror(errno)) + ")";
+  }
+  throw runtime_error(message);
 }
-
