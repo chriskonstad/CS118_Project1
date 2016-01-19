@@ -1,7 +1,7 @@
 CC=g++
 CFLAGS=-Wall -Wpedantic
 LDFLAGS=
-SOURCES=main.cpp
+SOURCES=main.cpp server.cpp
 OBJECTS=$(SOURCES:.cpp=.o)
 EXECUTABLE=server
 
