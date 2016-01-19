@@ -89,7 +89,7 @@ Response::Response(string filepath) {
     string ext = filepath.substr(pos+1);
     if("html" == ext) {
       mType = ContentType::HTML;
-    } else if("jpeg" == ext) {
+    } else if("jpeg" == ext || "jpg" == ext) {
       mType = ContentType::JPEG;
     } else if("gif" == ext) {
       mType = ContentType::GIF;
