@@ -12,6 +12,8 @@
 #include <sys/wait.h> /* for the waitpid() system call */
 #include <signal.h> /* signal name macros, and the kill() prototype */
 
+#include <unistd.h>
+
 
 void error(char *msg)
 {
