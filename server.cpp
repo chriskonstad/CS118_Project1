@@ -50,6 +50,7 @@ class Response {
       JPEG,
     };
     string timeToString(time_t time) const;
+    void loadFile(const string& filepath);
     Status mStatus;
     ContentType mType;
     time_t mAccess;
@@ -57,24 +58,37 @@ class Response {
     vector<char> mData;
 };
 
-Response::Response(string filepath) {
-  filepath.insert(0, ".");
-  time(&mAccess);
-  time(&mModified); // default value
-  mStatus = Status::INT_SERV_ERR; // default
-  mType = ContentType::HTML;  // default
+void Response::loadFile(const string& filepath) {
+  // Get the file extension
+  int pos = filepath.rfind(".");
+  string ext = filepath.substr(pos+1);
+  if("html" == ext) {
+    mType = ContentType::HTML;
+  } else if("jpeg" == ext || "jpg" == ext) {
+    mType = ContentType::JPEG;
+  } else if("gif" == ext) {
+    mType = ContentType::GIF;
+  } else {
+    mType = ContentType::HTML;
+    mStatus = Status::FORBIDDEN;
+    mData.clear();
+    loadFile("./static/403.html");
+    return;
+  }
 
-  // TODO ensure file is in server's tree
   ifstream file(filepath, std::ios::binary | std::ios::ate );
   if(!file) {
     mStatus = Status::NOT_FOUND;
+    loadFile("./static/404.html");
+    return;
   } else {
+    // mstatus defaults to 200 OK
+
     // Get file's last modified time
     struct stat attributes;
     stat(filepath.c_str(), &attributes);
     mModified = attributes.st_mtime;
 
-    mStatus = Status::OK;
     // Get the length of the file
     file.seekg(0, file.end);
     int filesize = file.tellg();
@@ -83,22 +97,18 @@ Response::Response(string filepath) {
     // Read the file into the data vector
     mData.resize(filesize);
     file.read(mData.data(), mData.size());
-
-    // Get the file extension
-    int pos = filepath.rfind(".");
-    string ext = filepath.substr(pos+1);
-    if("html" == ext) {
-      mType = ContentType::HTML;
-    } else if("jpeg" == ext || "jpg" == ext) {
-      mType = ContentType::JPEG;
-    } else if("gif" == ext) {
-      mType = ContentType::GIF;
-    } else {
-      mType = ContentType::HTML;
-      mStatus = Status::FORBIDDEN;
-      mData.clear();
-    }
   }
+}
+
+Response::Response(string filepath) {
+  filepath.insert(0, ".");
+  time(&mAccess);
+  time(&mModified); // default value
+  mStatus = Status::OK; // default, let's be optimistic
+  mType = ContentType::HTML;  // default
+
+  // TODO ensure file is in server's tree
+  loadFile(filepath);
 }
 
 vector<char> Response::data() const {
