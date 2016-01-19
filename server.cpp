@@ -7,7 +7,13 @@
 #include <stdlib.h>
 #include <strings.h>
 
+#include <string>
+#include <stdexcept>
+
 #include <unistd.h>
+
+using std::runtime_error;
+using std::string;
 
 Server::Server(int port) : mPort(port){
   mSockfd = socket(AF_INET, SOCK_STREAM, 0); //create socket
@@ -72,8 +78,8 @@ void Server::handleRequest(int socketfd, const sockaddr_in &cli_addr,
   close(socketfd);//close connection 
 }
 
-void Server::error(char *msg)
+void Server::error(const string& msg)
 {
-  perror(msg);
-  exit(1);
+  //perror(msg);
+  throw runtime_error(msg);
 }

@@ -1,14 +1,17 @@
-/* A simple server in the internet domain using TCP
-   The port number is passed as an argument 
-   This version runs forever, forking off a separate 
-   process for each connection
-   */
-#include <stdio.h>
+#include <iostream>
 
 #include "server.h"
 
+using std::endl;
+using std::cout;
+using std::runtime_error;
+
 int main(int argc, char *argv[])
 {
-  Server server;
-  server.run();
+  try {
+    Server server;
+    server.run();
+  } catch (runtime_error& e) {
+    cout << e.what() << endl;
+  }
 }
