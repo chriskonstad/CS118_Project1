@@ -8,6 +8,7 @@
 #include <strings.h>
 
 #include <ctime>
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <locale>
@@ -19,6 +20,10 @@
 
 #include <unistd.h>
 
+using std::chrono::duration_cast;
+using std::chrono::microseconds;
+using std::chrono::system_clock;
+using std::chrono::time_point;
 using std::cout;
 using std::endl;
 using std::ifstream;
@@ -254,6 +259,14 @@ void Server::run() {
 
 void Server::handleRequest(int socketfd, const sockaddr_in &cli_addr,
                           const socklen_t &cli_len) {
+  // Use system_clock because monotonic_click is deprecated
+  // and steady_clock is not supported on GCC 4.6.1.
+  // Yes, system_clock isn't ideal for this but it works well enough
+  time_point<system_clock> start, end;
+  time_point<system_clock> startRead, endRead;
+  time_point<system_clock> startWrite, endWrite;
+  time_point<system_clock> startFile, endFile;
+  start = system_clock::now();
   if (socketfd < 0) {
     error("ERROR on accept");
   }
@@ -264,29 +277,44 @@ void Server::handleRequest(int socketfd, const sockaddr_in &cli_addr,
   mBuffer.zero(); // reset memory
 
   //read client's message
+  startRead = system_clock::now();
   nBytesRead = read(socketfd, mBuffer.data() , mBuffer.size() - 1);
   if (nBytesRead < 0) {
     error("ERROR reading from socket");
   }
+  endRead = system_clock::now();
   mLog << "Received [" << nBytesRead << " bytes, allocated "
        << mMaxBufferSize << " bytes]:" << endl
        << mBuffer.data() << endl;
 
   // File to grab is between slash and a space
   //reply to client
+  startFile = system_clock::now();
   Response response(parseUri(mBuffer));
   vector<char> packet = createPacket(response);
+  endFile = system_clock::now();
 
-  string header = response.createHeader();
+  startWrite = system_clock::now();
   nBytesWritten = write(socketfd, packet.data(), packet.size());
   if (nBytesWritten < 0) {
     error("ERROR writing to socket");
   }
+  endWrite = system_clock::now();
   mLog << "Replied [" << nBytesWritten << " bytes]:" << endl;
-  mLog << header << endl << endl;
+  string header = response.createHeader();
+  mLog << header << endl;
 
   // TODO Not called if exception occurs above, FIX
   close(socketfd);  // close connection
+  end = system_clock::now();
+  auto elapsed = duration_cast<microseconds>(end-start).count();
+  auto elapsedRead = duration_cast<microseconds>(endRead-startRead).count();
+  auto elapsedWrite = duration_cast<microseconds>(endWrite-startWrite).count();
+  auto elapsedFile = duration_cast<microseconds>(endFile-start).count();
+  mLog << "[Processing (total): " << elapsed << " microseconds]" << endl
+       << "[Read: " << elapsedRead << " microseconds]" << endl
+       << "[File: " << elapsedFile << " microseconds]" << endl
+       << "[Write: " << elapsedWrite << " microseconds]" << endl << endl;
 }
 
 void Server::error(const string& msg)
