@@ -39,11 +39,17 @@ const string SERVER_NAME = "CS118 Project 1";
 const string FILE_403 = "./static/403.html";
 const string FILE_404 = "./static/404.html";
 
+// Class for representing a response
+// It is used to hold data for the header and to read files
 class Response {
  public:
+  // Read the file at filepath and build the response
   Response(string filepath);
 
+  // Create the HTTP header
   string createHeader() const;
+
+  // Get the response's data
   vector<char> data() const;
 
  private:
@@ -58,8 +64,12 @@ class Response {
     GIF,
     JPEG,
   };
+  // Turn a time_t to the string format needed for HTTP
   string timeToString(time_t time) const;
+  // Load the given file
   void loadFile(const string& filepath);
+
+  // HTTP header data
   Status mStatus;
   ContentType mType;
   time_t mAccess;
@@ -85,6 +95,7 @@ void Response::loadFile(const string& filepath) {
     return;
   }
 
+  // Load the file, or an error page if an error occurred
   ifstream file(filepath, std::ios::binary | std::ios::ate);
   if (!file && FILE_404 != filepath) {
     mStatus = Status::NOT_FOUND;
@@ -113,6 +124,7 @@ void Response::loadFile(const string& filepath) {
   }
 }
 
+// Create a response for the file at filepath
 Response::Response(string filepath) {
   filepath.insert(0, ".");
   time(&mAccess);
@@ -174,6 +186,7 @@ string Response::createHeader() const {
   return ss.str();
 }
 
+// Get the requested file from an HTTP request
 string parseUri(Server::Buffer& buffer) {
   int start = 0;
   int end = 0;
@@ -221,6 +234,7 @@ Server::Server(int port) : mLog(cout), mPort(port), mBuffer(mMaxBufferSize) {
     error("ERROR opening socket");
   }
   memset((char*)&mAddress, 0, sizeof(mAddress));  // reset memory
+
   // fill in address info
   mAddress.sin_family = AF_INET;
   mAddress.sin_addr.s_addr = INADDR_ANY;

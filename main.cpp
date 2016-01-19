@@ -12,6 +12,8 @@ using std::cout;
 using std::runtime_error;
 
 Server *server;
+
+// Handle interrupts to gracefully kill the server
 void signal_handler(int s) {
   cout << "Closing server due to signal '" << strsignal(s) << "'" << endl;
   delete server;
@@ -32,6 +34,7 @@ int main(int argc, char *argv[]) {
     server = new Server();
     server->run();
   } catch (runtime_error &e) {
+    // Display errors to stdout
     cout << e.what() << endl;
   }
   delete server;
