@@ -1,12 +1,5 @@
 #include "server.h"
 
-//#include <stdio.h>
-#include <sys/types.h>   // definitions of a number of data types used in socket.h and netinet/in.h
-#include <sys/socket.h>  // definitions of structures needed for sockets, e.g. sockaddr
-#include <netinet/in.h>  // constants and structures needed for internet domain addresses, e.g. sockaddr_in
-//#include <stdlib.h>
-//#include <strings.h>
-
 #include <cerrno>
 #include <chrono>
 #include <ctime>
@@ -14,13 +7,15 @@
 #include <fstream>
 #include <iostream>
 #include <locale>
+#include <netinet/in.h>  // constants and structures needed for internet domain addresses, e.g. sockaddr_in
 #include <sstream>
 #include <string>
 #include <stdexcept>
+#include <sys/socket.h>  // definitions of structures needed for sockets, e.g. sockaddr
 #include <sys/stat.h>
-#include <vector>
-
+#include <sys/types.h>   // definitions of a number of data types used in socket.h and netinet/in.h
 #include <unistd.h>
+#include <vector>
 
 using std::chrono::duration_cast;
 using std::chrono::microseconds;
