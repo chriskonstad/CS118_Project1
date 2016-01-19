@@ -234,10 +234,7 @@ void Server::Buffer::zero() {
   memset(mLocation, 0, mSize);
 }
 
-Server::Server(int port)
-    : mBuffer(mMaxBufferSize),
-      mLog(cout),
-      mPort(port) {
+Server::Server(int port) : mLog(cout), mPort(port), mBuffer(mMaxBufferSize) {
   mSockfd = socket(AF_INET, SOCK_STREAM, 0); //create socket
   if (mSockfd < 0) {
     error("ERROR opening socket");
@@ -265,7 +262,6 @@ Server::~Server() {
 void Server::run() {
   int newsockfd;
   socklen_t clilen;
-  sockaddr_in serv_addr;
   sockaddr_in cli_addr;
 
   //accept connections
