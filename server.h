@@ -23,6 +23,7 @@ class Server {
       char *mLocation;
       int mSize;
   };
+  std::ostream& mLog;
   int mPort;
   int mSockfd;
   sockaddr_in mAddress;

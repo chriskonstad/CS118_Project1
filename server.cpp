@@ -7,11 +7,14 @@
 #include <stdlib.h>
 #include <strings.h>
 
+#include <iostream>
 #include <string>
 #include <stdexcept>
 
 #include <unistd.h>
 
+using std::cout;
+using std::endl;
 using std::runtime_error;
 using std::string;
 
@@ -35,7 +38,7 @@ void Server::Buffer::zero() {
   memset(mLocation, 0, mSize);
 }
 
-Server::Server(int port) : mPort(port), mBuffer(mMaxBufferSize) {
+Server::Server(int port) : mBuffer(mMaxBufferSize), mLog(cout), mPort(port) {
   mSockfd = socket(AF_INET, SOCK_STREAM, 0); //create socket
   if (mSockfd < 0) {
     error("ERROR opening socket");
@@ -51,9 +54,11 @@ Server::Server(int port) : mPort(port), mBuffer(mMaxBufferSize) {
   }
 
   listen(mSockfd,5); //5 simultaneous connection at most
+  mLog << "Initializing server on port " << mPort << endl;
 }
 
 Server::~Server() {
+  mLog << "Stopping the server" << endl << "Closing port " << mPort << endl;
   // Close the opened socket
   close(mSockfd);
 }
@@ -87,7 +92,9 @@ void Server::handleRequest(int socketfd, const sockaddr_in &cli_addr,
   if (nBytesRead < 0) {
     error("ERROR reading from socket");
   }
-  printf("Here is the message: %s\n", mBuffer.data());
+  mLog << "Received [" << nBytesRead << " bytes, allocated "
+       << mMaxBufferSize << " bytes]:" << endl
+       << mBuffer.data() << endl;
 
   //reply to client
   nBytesWritten = write(socketfd,"I got your message",18);
@@ -95,6 +102,7 @@ void Server::handleRequest(int socketfd, const sockaddr_in &cli_addr,
     error("ERROR writing to socket");
   }
 
+  // TODO Not called if exception occurs above, FIX
   close(socketfd);  // close connection
 }
 
