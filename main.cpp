@@ -1,7 +1,9 @@
 #include <cstdlib>
 #include <iostream>
 #include <signal.h>
+#include <string.h>
 #include <unistd.h>
+#include <stdexcept>
 
 #include "server.h"
 
