@@ -7,13 +7,17 @@
 #include <fstream>
 #include <iostream>
 #include <locale>
-#include <netinet/in.h>  // constants and structures needed for internet domain addresses, e.g. sockaddr_in
+// constants and structures needed for internet domain addresses,
+// e.g. sockaddr_in
+#include <netinet/in.h>
 #include <sstream>
 #include <string>
 #include <stdexcept>
-#include <sys/socket.h>  // definitions of structures needed for sockets, e.g. sockaddr
+// definitions of structures needed for sockets, e.g. sockaddr
+#include <sys/socket.h>
 #include <sys/stat.h>
-#include <sys/types.h>   // definitions of a number of data types used in socket.h and netinet/in.h
+// definitions of a number of data types used in socket.h and netinet/in.h
+#include <sys/types.h>
 #include <unistd.h>
 #include <vector>
 
@@ -36,41 +40,42 @@ const string FILE_403 = "./static/403.html";
 const string FILE_404 = "./static/404.html";
 
 class Response {
-  public:
-    Response(string filepath);
+ public:
+  Response(string filepath);
 
-    string createHeader() const;
-    vector<char> data() const;
-  private:
-    enum class Status {
-      OK = 200,
-      FORBIDDEN = 403,
-      NOT_FOUND = 404,
-      INT_SERV_ERR = 500,
-    };
-    enum class ContentType {
-      HTML,
-      GIF,
-      JPEG,
-    };
-    string timeToString(time_t time) const;
-    void loadFile(const string& filepath);
-    Status mStatus;
-    ContentType mType;
-    time_t mAccess;
-    time_t mModified;
-    vector<char> mData;
+  string createHeader() const;
+  vector<char> data() const;
+
+ private:
+  enum class Status {
+    OK = 200,
+    FORBIDDEN = 403,
+    NOT_FOUND = 404,
+    INT_SERV_ERR = 500,
+  };
+  enum class ContentType {
+    HTML,
+    GIF,
+    JPEG,
+  };
+  string timeToString(time_t time) const;
+  void loadFile(const string& filepath);
+  Status mStatus;
+  ContentType mType;
+  time_t mAccess;
+  time_t mModified;
+  vector<char> mData;
 };
 
 void Response::loadFile(const string& filepath) {
   // Get the file extension
   int pos = filepath.rfind(".");
-  string ext = filepath.substr(pos+1);
-  if("html" == ext) {
+  string ext = filepath.substr(pos + 1);
+  if ("html" == ext) {
     mType = ContentType::HTML;
-  } else if("jpeg" == ext || "jpg" == ext) {
+  } else if ("jpeg" == ext || "jpg" == ext) {
     mType = ContentType::JPEG;
-  } else if("gif" == ext) {
+  } else if ("gif" == ext) {
     mType = ContentType::GIF;
   } else {
     mType = ContentType::HTML;
@@ -80,8 +85,8 @@ void Response::loadFile(const string& filepath) {
     return;
   }
 
-  ifstream file(filepath, std::ios::binary | std::ios::ate );
-  if(!file && FILE_404 != filepath) {
+  ifstream file(filepath, std::ios::binary | std::ios::ate);
+  if (!file && FILE_404 != filepath) {
     mStatus = Status::NOT_FOUND;
     loadFile(FILE_404);
     return;
@@ -111,22 +116,20 @@ void Response::loadFile(const string& filepath) {
 Response::Response(string filepath) {
   filepath.insert(0, ".");
   time(&mAccess);
-  time(&mModified); // default value
-  mStatus = Status::OK; // default, let's be optimistic
+  time(&mModified);           // default value
+  mStatus = Status::OK;       // default, let's be optimistic
   mType = ContentType::HTML;  // default
 
   // TODO ensure file is in server's tree
   loadFile(filepath);
 }
 
-vector<char> Response::data() const {
-  return mData;
-}
+vector<char> Response::data() const { return mData; }
 
 string Response::timeToString(time_t t) const {
   vector<char> dateStr;
   dateStr.resize(80);
-  struct tm * timeinfo;
+  struct tm* timeinfo;
   timeinfo = localtime(&t);
   strftime(dateStr.data(), dateStr.size(), "%a, %e %b %Y %X", timeinfo);
   return string(dateStr.data());
@@ -135,7 +138,7 @@ string Response::timeToString(time_t t) const {
 string Response::createHeader() const {
   stringstream ss;
   ss << "HTTP/1.1 ";
-  switch(mStatus) {
+  switch (mStatus) {
     case Status::OK:
       ss << "200 OK" << endl;
       break;
@@ -157,7 +160,7 @@ string Response::createHeader() const {
   ss << "Last-Modified: " << timeToString(mModified) << endl;
 
   ss << "Content-Type: ";
-  switch(mType) {
+  switch (mType) {
     case ContentType::HTML:
       ss << "text/html" << endl;
       break;
@@ -174,14 +177,14 @@ string Response::createHeader() const {
 string parseUri(Server::Buffer& buffer) {
   int start = 0;
   int end = 0;
-  for(int i=0; i<buffer.size(); i++) {
-    if('/' == buffer.data()[i]) {
+  for (int i = 0; i < buffer.size(); i++) {
+    if ('/' == buffer.data()[i]) {
       start = i;
       break;
     }
   }
-  for(int i=start; i<buffer.size(); i++) {
-    if(' ' == buffer.data()[i]) {
+  for (int i = start; i < buffer.size(); i++) {
+    if (' ' == buffer.data()[i]) {
       end = i;
       break;
     }
@@ -192,55 +195,42 @@ string parseUri(Server::Buffer& buffer) {
 // Wraps the socketfd up in a RAII object so that sockets are always closed,
 // even if exceptions are called
 class SocketGuard {
-  public:
-    SocketGuard(int socketfd) : mSocketFd(socketfd) {}
-    ~SocketGuard() {
-      close(mSocketFd);
-    }
+ public:
+  SocketGuard(int socketfd) : mSocketFd(socketfd) {}
+  ~SocketGuard() { close(mSocketFd); }
 
-    int socket() const {
-      return mSocketFd;
-    }
-  private:
-    int mSocketFd;
+  int socket() const { return mSocketFd; }
+
+ private:
+  int mSocketFd;
 };
 
-Server::Buffer::Buffer(int size) : mSize(size) {
-  mLocation = new char[size];
-}
+Server::Buffer::Buffer(int size) : mSize(size) { mLocation = new char[size]; }
 
-Server::Buffer::~Buffer() {
-  delete[] mLocation;
-}
+Server::Buffer::~Buffer() { delete[] mLocation; }
 
-char * Server::Buffer::data() {
-  return mLocation;
-}
+char* Server::Buffer::data() { return mLocation; }
 
-int Server::Buffer::size() const {
-  return mSize;
-}
+int Server::Buffer::size() const { return mSize; }
 
-void Server::Buffer::zero() {
-  memset(mLocation, 0, mSize);
-}
+void Server::Buffer::zero() { memset(mLocation, 0, mSize); }
 
 Server::Server(int port) : mLog(cout), mPort(port), mBuffer(mMaxBufferSize) {
-  mSockfd = socket(AF_INET, SOCK_STREAM, 0); //create socket
+  mSockfd = socket(AF_INET, SOCK_STREAM, 0);  // create socket
   if (mSockfd < 0) {
     error("ERROR opening socket");
   }
-  memset((char *) &mAddress, 0, sizeof(mAddress));  // reset memory
+  memset((char*)&mAddress, 0, sizeof(mAddress));  // reset memory
   // fill in address info
   mAddress.sin_family = AF_INET;
   mAddress.sin_addr.s_addr = INADDR_ANY;
   mAddress.sin_port = htons(mPort);
 
-  if (bind(mSockfd, (struct sockaddr *)&mAddress, sizeof(mAddress)) < 0) {
+  if (bind(mSockfd, (struct sockaddr*)&mAddress, sizeof(mAddress)) < 0) {
     error("ERROR on binding");
   }
 
-  listen(mSockfd,5); // 5 simultaneous connection at most
+  listen(mSockfd, 5);  // 5 simultaneous connection at most
   mLog << "Initializing server on port " << mPort << endl;
 }
 
@@ -256,14 +246,14 @@ void Server::run() {
   sockaddr_in cli_addr;
 
   // accept connections
-  while(true) {
-    newsockfd = accept(mSockfd, (struct sockaddr *) &cli_addr, &clilen);
+  while (true) {
+    newsockfd = accept(mSockfd, (struct sockaddr*)&cli_addr, &clilen);
     handleRequest(newsockfd, cli_addr, clilen);
   }
 }
 
-void Server::handleRequest(int socketfd, const sockaddr_in &cli_addr,
-                          const socklen_t &cli_len) {
+void Server::handleRequest(int socketfd, const sockaddr_in& cli_addr,
+                           const socklen_t& cli_len) {
   // Use system_clock because monotonic_click is deprecated
   // and steady_clock is not supported on GCC 4.6.1.
   // Yes, system_clock isn't ideal for this but it works well enough
@@ -282,17 +272,17 @@ void Server::handleRequest(int socketfd, const sockaddr_in &cli_addr,
   vector<int> nBytesWritten;
   nBytesWritten.reserve(3);
 
-  mBuffer.zero(); // reset memory
+  mBuffer.zero();  // reset memory
 
   // read client's message
   startRead = system_clock::now();
-  nBytesRead = read(socketGuard.socket(), mBuffer.data() , mBuffer.size() - 1);
+  nBytesRead = read(socketGuard.socket(), mBuffer.data(), mBuffer.size() - 1);
   if (nBytesRead < 0) {
     error("ERROR reading from socket");
   }
   endRead = system_clock::now();
-  mLog << "Received [" << nBytesRead << " bytes, allocated "
-       << mMaxBufferSize << " bytes]:" << endl
+  mLog << "Received [" << nBytesRead << " bytes, allocated " << mMaxBufferSize
+       << " bytes]:" << endl
        << mBuffer.data() << endl;
 
   // reply to client
@@ -302,11 +292,13 @@ void Server::handleRequest(int socketfd, const sockaddr_in &cli_addr,
 
   string header = response.createHeader();
   startWrite = system_clock::now();
-  nBytesWritten.push_back(write(socketGuard.socket(), header.data(), header.size()));
+  nBytesWritten.push_back(
+      write(socketGuard.socket(), header.data(), header.size()));
   nBytesWritten.push_back(write(socketGuard.socket(), "\n", 1));
-  nBytesWritten.push_back(write(socketGuard.socket(), response.data().data(), response.data().size()));
-  for(auto& i : nBytesWritten) {
-    if(i < 0) {
+  nBytesWritten.push_back(write(socketGuard.socket(), response.data().data(),
+                                response.data().size()));
+  for (auto& i : nBytesWritten) {
+    if (i < 0) {
       error("ERROR writing to socket");
     }
     totalBytesWritten += i;
@@ -316,20 +308,21 @@ void Server::handleRequest(int socketfd, const sockaddr_in &cli_addr,
   mLog << header << endl;
 
   end = system_clock::now();
-  auto elapsed = duration_cast<microseconds>(end-start).count();
-  auto elapsedRead = duration_cast<microseconds>(endRead-startRead).count();
-  auto elapsedWrite = duration_cast<microseconds>(endWrite-startWrite).count();
-  auto elapsedFile = duration_cast<microseconds>(endFile-start).count();
+  auto elapsed = duration_cast<microseconds>(end - start).count();
+  auto elapsedRead = duration_cast<microseconds>(endRead - startRead).count();
+  auto elapsedWrite =
+      duration_cast<microseconds>(endWrite - startWrite).count();
+  auto elapsedFile = duration_cast<microseconds>(endFile - start).count();
   mLog << "[Processing (total): " << elapsed << " microseconds]" << endl
        << "[Read: " << elapsedRead << " microseconds]" << endl
        << "[File: " << elapsedFile << " microseconds]" << endl
-       << "[Write: " << elapsedWrite << " microseconds]" << endl << endl;
+       << "[Write: " << elapsedWrite << " microseconds]" << endl
+       << endl;
 }
 
-void Server::error(const string& msg)
-{
+void Server::error(const string& msg) {
   string message = msg;
-  if(errno) {
+  if (errno) {
     message += " (errno: " + string(strerror(errno)) + ")";
   }
   throw runtime_error(message);

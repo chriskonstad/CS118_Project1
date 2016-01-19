@@ -18,8 +18,7 @@ void signal_handler(int s) {
   exit(1);
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   struct sigaction handler;
   handler.sa_handler = signal_handler;
   sigemptyset(&handler.sa_mask);
@@ -32,7 +31,7 @@ int main(int argc, char *argv[])
   try {
     server = new Server();
     server->run();
-  } catch (runtime_error& e) {
+  } catch (runtime_error &e) {
     cout << e.what() << endl;
   }
   delete server;

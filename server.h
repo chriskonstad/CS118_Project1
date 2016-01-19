@@ -12,16 +12,18 @@ class Server {
   void run();
 
   class Buffer {
-    public:
-      Buffer(int size);
-      ~Buffer();
-      char* data();
-      int size() const;
-      void zero();
-    private:
-      char *mLocation;
-      int mSize;
+   public:
+    Buffer(int size);
+    ~Buffer();
+    char* data();
+    int size() const;
+    void zero();
+
+   private:
+    char* mLocation;
+    int mSize;
   };
+
  private:
   std::ostream& mLog;
   int mPort;
