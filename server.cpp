@@ -121,6 +121,24 @@ string Response::createHeader() const {
   return ss.str();
 }
 
+string parseUri(Server::Buffer& buffer) {
+  int start = 0;
+  int end = 0;
+  for(int i=0; i<buffer.size(); i++) {
+    if('/' == buffer.data()[i]) {
+      start = i;
+      break;
+    }
+  }
+  for(int i=start; i<buffer.size(); i++) {
+    if(' ' == buffer.data()[i]) {
+      end = i;
+      break;
+    }
+  }
+  return string(&buffer.data()[start], end - start);
+}
+
 Server::Buffer::Buffer(int size) : mSize(size) {
   mLocation = new char[size];
 }
@@ -202,6 +220,9 @@ void Server::handleRequest(int socketfd, const sockaddr_in &cli_addr,
        << mMaxBufferSize << " bytes]:" << endl
        << mBuffer.data() << endl;
 
+  // File to grab is between slash and a space
+  mLog << "Parsed URI: " << parseUri(mBuffer) << endl;
+
   //reply to client
   Response response("foo.html");
   string header = response.createHeader();
@@ -220,3 +241,4 @@ void Server::error(const string& msg)
 {
   throw runtime_error(msg);
 }
+

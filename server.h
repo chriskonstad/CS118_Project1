@@ -11,7 +11,6 @@ class Server {
 
   void run();
 
- private:
   class Buffer {
     public:
       Buffer(int size);
@@ -23,6 +22,7 @@ class Server {
       char *mLocation;
       int mSize;
   };
+ private:
   std::ostream& mLog;
   int mPort;
   int mSockfd;
