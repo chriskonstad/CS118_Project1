@@ -14,6 +14,7 @@
 #include <sstream>
 #include <string>
 #include <stdexcept>
+#include <sys/stat.h>
 #include <vector>
 
 #include <unistd.h>
@@ -57,16 +58,22 @@ class Response {
 };
 
 Response::Response(string filepath) {
+  filepath.insert(0, ".");
   time(&mAccess);
   time(&mModified); // default value
   mStatus = Status::INT_SERV_ERR; // default
   mType = ContentType::HTML;  // default
 
   // TODO ensure file is in server's tree
-  ifstream file("." + filepath, std::ios::binary | std::ios::ate );
+  ifstream file(filepath, std::ios::binary | std::ios::ate );
   if(!file) {
     mStatus = Status::NOT_FOUND;
   } else {
+    // Get file's last modified time
+    struct stat attributes;
+    stat(filepath.c_str(), &attributes);
+    mModified = attributes.st_mtime;
+
     mStatus = Status::OK;
     // Get the length of the file
     file.seekg(0, file.end);
