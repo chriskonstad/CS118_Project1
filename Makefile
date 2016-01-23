@@ -15,3 +15,11 @@ $(EXECUTABLE): $(OBJECTS)
 
 clean:
 	rm $(OBJECTS) $(EXECUTABLE)
+
+cleandoc:
+	rm report.pdf
+
+doc: report.pdf
+
+report.pdf : doc/report.md
+	pandoc doc/report.md -o report.pdf
