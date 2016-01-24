@@ -79,6 +79,7 @@ class Response {
   };
   enum class ContentType {
     HTML,
+    TEXT,
     GIF,
     JPEG,
   };
@@ -101,6 +102,8 @@ void Response::loadFile(const string& filepath) {
   string ext = filepath.substr(pos + 1);
   if ("html" == ext) {
     mType = ContentType::HTML;
+  } else if ("txt" == ext) {
+    mType = ContentType::TEXT;
   } else if ("jpeg" == ext || "jpg" == ext) {
     mType = ContentType::JPEG;
   } else if ("gif" == ext) {
@@ -219,6 +222,9 @@ string Response::createHeader() const {
   switch (mType) {
     case ContentType::HTML:
       ss << "text/html" << endl;
+      break;
+    case ContentType::TEXT:
+      ss << "text/plain" << endl;
       break;
     case ContentType::GIF:
       ss << "image/gif" << endl;
