@@ -151,7 +151,7 @@ bool isInFileTree(const string& tree, const char* path) {
   }
 
   // Compare path to tree
-  for (auto i = 0; i < tree.size(); i++) {
+  for (size_t i = 0; i < tree.size(); i++) {
     if (tree[i] != path[i]) {
       return false;
     }
