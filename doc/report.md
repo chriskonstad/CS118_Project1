@@ -11,15 +11,28 @@ sockets using a blocking syscall to make the connection.
 
 Each request is then read into a buffer and parsed for the requested file.
 The server determines the response content-type by reading the file name
-extension of the requested files.  As only HTML, JPEG/JPG, and GIF files are
+extension of the requested file.  As only HTML, JPEG/JPG, and GIF files are
 supposed to be served, all other file type requests generate 403 Forbidden
-errors.  If the requested file is not found, the 404 page is returned.
+errors.  If the requested file is not found, the 404 page is returned.  Pages
+outside of the current working directory when the server is started are not
+served.
 
 After the content to be returned is read into memory, the header is created and
 the header and content are streamed out using `write`.
 
+Then, everything is cleaned up.
+
+All of the response handling code happens in `Server::handleRequest()`.
+
 # Difficulties
-% TODO
+* Using exceptions in C++ leads to memory issues, because calls to `delete`
+might not happen if anything between `new` and `delete` throws.  I got around
+those difficulties by using RAII for memory and sockets.
+everything is cleaned up no matter what).
+
+* I did most of my development with Clang 3.7, which has more C++11/14 support
+than GCC 4.6.1 (which is supplied on the test virtual machine).  There were
+some bugs when I backported to GCC 4.6.1.
 
 # Compiling and Running
 Please see `README.md` for compilation and running instructions.
