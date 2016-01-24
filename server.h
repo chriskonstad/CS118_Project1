@@ -38,4 +38,5 @@ class Server {
                      const socklen_t& cli_len);  // process a request
   static constexpr int mMaxBufferSize = 1024;    // max request size
   Buffer mBuffer;                                // buffer to hold request data
+  std::string mServerPath;                       // path to the server
 };

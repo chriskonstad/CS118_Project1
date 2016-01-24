@@ -3,9 +3,11 @@
 #include <cerrno>
 #include <chrono>
 #include <ctime>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <locale>
 // constants and structures needed for internet domain addresses,
 // e.g. sockaddr_in
@@ -39,12 +41,28 @@ const string SERVER_NAME = "CS118 Project 1";
 const string FILE_403 = "./static/403.html";
 const string FILE_404 = "./static/404.html";
 
+// Wraps a char * up in a RAII wrapper object so that it is always freed
+class SysCallGuard {
+ public:
+  SysCallGuard(char* data) : mData(data) {}
+  ~SysCallGuard() {
+    if (mData) {
+      free(mData);
+    }
+  }
+
+  char* data() const { return mData; }
+
+ private:
+  char* mData;
+};
+
 // Class for representing a response
 // It is used to hold data for the header and to read files
 class Response {
  public:
   // Read the file at filepath and build the response
-  Response(string filepath);
+  Response(const string& serverPath, string filepath);
 
   // Create the HTTP header
   string createHeader() const;
@@ -124,16 +142,42 @@ void Response::loadFile(const string& filepath) {
   }
 }
 
+bool isInFileTree(const string& tree, const char* path) {
+  size_t pathLength = strlen(path);
+
+  // If path is in tree, it must be at least as long as tree
+  if (pathLength < tree.size()) {
+    return false;
+  }
+
+  // Compare path to tree
+  for (auto i = 0; i < tree.size(); i++) {
+    if (tree[i] != path[i]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 // Create a response for the file at filepath
-Response::Response(string filepath) {
+Response::Response(const string& serverPath, string filepath) {
   filepath.insert(0, ".");
   time(&mAccess);
   time(&mModified);           // default value
   mStatus = Status::OK;       // default, let's be optimistic
   mType = ContentType::HTML;  // default
 
-  // TODO ensure file is in server's tree
-  loadFile(filepath);
+  // Ensure file is in server's tree
+  SysCallGuard realFilePath(realpath(filepath.data(), nullptr));
+  if (!realFilePath.data()) {
+    // This will load either 403 or 404 depending on requested file
+    loadFile(filepath);
+  } else if (isInFileTree(serverPath, realFilePath.data())) {
+    loadFile(filepath);
+  } else {
+    loadFile(FILE_403);
+  }
 }
 
 vector<char> Response::data() const { return mData; }
@@ -244,6 +288,11 @@ Server::Server(int port) : mLog(cout), mPort(port), mBuffer(mMaxBufferSize) {
     error("ERROR on binding");
   }
 
+  // Store the server's path
+  SysCallGuard serverPath(realpath(".", nullptr));
+  mServerPath = string(serverPath.data());
+  mLog << "Server's tree: " << mServerPath << endl;
+
   listen(mSockfd, 5);  // 5 simultaneous connection at most
   mLog << "Initializing server on port " << mPort << endl;
 }
@@ -301,7 +350,7 @@ void Server::handleRequest(int socketfd, const sockaddr_in& cli_addr,
 
   // reply to client
   startFile = system_clock::now();
-  Response response(parseUri(mBuffer));
+  Response response(mServerPath, parseUri(mBuffer));
   endFile = system_clock::now();
 
   string header = response.createHeader();
